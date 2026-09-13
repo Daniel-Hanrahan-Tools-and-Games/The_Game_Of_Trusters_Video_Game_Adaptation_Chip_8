@@ -1,0 +1,2 @@
+# The_Game_Of_Trusters_Video_Game_Adaptation_Chip_8
+Chip 8 version of The_Game_Of_Trusters_Video_Game

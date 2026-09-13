@@ -1,0 +1,135 @@
+# =====================================================================
+# THE GAME OF TRUSTERS - 1977 Strict CHIP-8 Port
+# Compatible with original COSMAC VIP and COSMAC ELF interpreters.
+# =====================================================================
+
+# --- HARDWARE & REGISTER MAP ---
+# vA : Cumulative Party Strength (Increases on wins & coin pickups)
+# vB : Current Enemy Strength tier (Randomly generated per encounter)
+# vC : Scratch register for random dice rolls and arithmetic
+# v3 : Screen X coordinate for sprite rendering (Columns: 0 to 63)
+# v4 : Screen Y coordinate for sprite rendering (Rows: 0 to 31)
+# v0 : Keyboard buffer input register (Captures hex keypad signals 0-F)
+
+# --- GRAPHICAL SPRITE DEFINITIONS (8x8 Monochrome Bitmaps) ---
+: player_sprite
+    0x3C 0x7E 0xFF 0xFF 0xFF 0x7E 0x3C 0x18  # Hero icon shape
+
+: enemy_sprite
+    0x81 0x42 0x3C 0x5A 0x7E 0xA5 0x81 0xFF  # Monster shape
+
+: coin_sprite
+    0x3C 0x42 0x99 0x85 0x85 0x99 0x42 0x3C  # Treasure icon shape
+
+: skull_sprite
+    0x3C 0x7E 0xA5 0x81 0x7E 0x24 0x24 0x18  # Game Over skull shape
+
+
+# --- INITIALIZATION LOOP ---
+: main
+    vA := 3             # Initialize baseline party strength (Hero + 2 units)
+
+
+# --- MAIN ROOM NAVIGATION LOOP ---
+: room_loop
+    clear               # Wipe the 64x32 monochrome display buffer
+    v3 := 28            # Set horizontal center coordinate (28 out of 64)
+    v4 := 12            # Set vertical center coordinate (12 out of 32)
+    i := player_sprite  # Point index register 'I' to player bitmap data
+    sprite v3 v4 8      # Draw 8-byte tall player graphic onto screen
+    
+    # Halt execution until the player presses any key on the hex pad
+    v0 := key           
+    
+    # Roll a 4-sided style event selector (Mask 0x03 restricts values to 0-3)
+    vC := random 0x03   
+    
+    # Branch game flow depending on the environmental room event rolled
+    if vC == 0 then jump event_coin   # 25% chance: Treasure room
+    if vC == 1 then jump event_trap   # 25% chance: Hazard room
+    jump event_enemy                  # 50% chance: Monster encounter
+
+
+# --- EVENT: COIN / TREASURE DISCOVERY ---
+: event_coin
+    clear               # Reset display matrix
+    v3 := 28            # Center X coordinate
+    v4 := 12            # Center Y coordinate
+    i := coin_sprite    # Load treasure icon data into memory pointer
+    sprite v3 v4 8      # Render coin graphic
+    vA += 1             # Boost party strength permanently by 1 point
+    v0 := key           # Pause for player acknowledgement before continuing
+    jump room_loop      # Loop back to next room choice
+
+
+# --- EVENT: HAZARD / TRAP ENCOUNTER ---
+: event_trap
+    # Roll hazard check (Mask 0x07 generates a random value from 0 to 7)
+    vC := random 0x07   
+    
+    # If roll is greater than 3 (roughly 50% safety margin), player survives
+    if vC > 3 then jump room_loop 
+    
+    # Failed check drops execution straight into the fatal game over state
+    jump game_over
+
+
+# --- EVENT: COMBAT ENCOUNTER ---
+: event_enemy
+    clear               # Clear screen to prepare for battle rendering
+    v3 := 28            # Center X coordinate
+    v4 := 12            # Center Y coordinate
+    i := enemy_sprite   # Load monster bitmap data
+    sprite v3 v4 8      # Render enemy graphic
+    
+    # Generate baseline enemy strength tier (Random value from 0 to 7)
+    vB := random 0x07
+
+
+# --- COMBAT INPUT & DECISION LOOP ---
+: combat_loop
+    v0 := key           # Poll for combat action command
+    if v0 == 1 then jump attack_action  # Key '1': Choose Physical Attack
+    if v0 == 2 then jump talk_action    # Key '2': Choose Diplomacy / Trust
+    jump combat_loop    # Ignore invalid keys and continue listening
+
+
+# --- COMBAT ACTION: ATTACK (D31 + Strength vs Enemy Power) ---
+: attack_action
+    vC := random 0x1F   # Roll broad action modifier (Mask 0x1F = 0 to 31)
+    vC += vA            # Combine die roll with cumulative party strength
+    
+    # Victory check: If total offensive output exceeds enemy power, win encounter
+    if vC > vB then jump win_combat
+    
+    # Lower offensive output results in failure and death
+    jump game_over
+
+
+# --- COMBAT ACTION: DIPLOMACY / TRUST ---
+: talk_action
+    vC := random 0x03   # Roll narrow trust chance (0 to 3)
+    
+    # Trust succeeds only if luck roll beats threshold (> 1)
+    if vC > 1 then jump win_combat
+    
+    # Failed trust results in combat penalty / death
+    jump game_over
+
+
+# --- COMBAT SUCCESS: VICTORY & REWARD ---
+: win_combat
+    vA += 1             # Reward party growth (+1 strength for surviving)
+    jump room_loop      # Return to exploration loop
+
+
+# --- TERMINAL STATE: FATAL GAME OVER ---
+: game_over
+    clear               # Wipe graphics canvas
+    v3 := 28            # Center X coordinate
+    v4 := 12            # Center Y coordinate
+    i := skull_sprite   # Point index register to death skull bitmap
+    sprite v3 v4 8      # Render final skull graphic
+    
+: lock
+    jump lock           # Infinite hardware loop freezes the machine on death

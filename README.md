@@ -1,6 +1,8 @@
 # The_Game_Of_Trusters_Video_Game_Adaptation_Chip_8
 Chip 8 version of The_Game_Of_Trusters_Video_Game
 
+The game is written in octo.
+
 
 You need to run .ch8 file in Chip 8 Emulator/Interpreter
 

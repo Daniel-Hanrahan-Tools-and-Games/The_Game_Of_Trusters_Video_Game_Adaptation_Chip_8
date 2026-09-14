@@ -14,6 +14,10 @@ You need to run .ch8 file in Chip 8 Emulator/Interpreter
 <a href="https://daniel-hanrahan-tools-and-games.github.io/The_Game_Of_Trusters/">The_Game_Of_Trusters ReadMe Page</a>
 
 
+<h3>Link to page repo</h3>
+
+<a href="https://github.com/Daniel-Hanrahan-Tools-and-Games/The_Game_Of_Trusters_Video_Game_Adaptation_Chip_8">Repository Page</a>
+
 
 Player is shown when nothing happens only options are 1, 2 ,3 ,4 on Chip 8 Keypad.
 
